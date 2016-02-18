@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head> 
+  <meta charset="utf-8" /> 
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" /> 
+  <meta name="viewport" content="width=device-width, initial-scale=1" /> 
+  <title>
+            GoldenEye!
+  </title> 
+  <meta name="description" content="Show GoldenEye Trace" /> 
+  <meta name="author" content="J&amp;H!" /> 
+  <link href="css/bootstrap.min.css" rel="stylesheet" /> 
+  <link href="css/style.css" rel="stylesheet" /> 
+  <link rel="stylesheet" href="css/metro.css">
+ 
+  <script type="text/javascript" src="js/jquery-1.4.4.min.js">
+        </script> 
+  <script type="text/javascript" src="js/jquery.ztree.core-3.5.js">
+        </script> 
+  <script>
+            var zTreeObj;
+            var setting = {
+                view: {
+                    nameIsHTML: true
+                },
+                edit: {
+                    enable: true,
+                    showRemoveBtn: false,
+                    showRenameBtn: false
+                },
+                data: {
+                    keep: {
+                        parent: true,
+                        leaf: true
+                    },
+                    simpleData: {
+                        enable: true
+                    }
+                },
+                callback: {
+                    beforeDrag: beforeDrag,
+
+                }
+            };
+
+            var zNodes = [{
+                id: 1,
+                pId: 0,
+                name: "ENB",
+                open: true,
+                isParent: true
+            },
+            {
+                id: 8000,
+                pId: 1,
+                name: "Cell(8000)",
+                isParent: true
+            },
+            {
+                id: 8001,
+                pId: 1,
+                name: "Cell(8001)",
+                isParent: true
+            },
+            {
+                id: 8002,
+                pId: 1,
+                name: "Cell(8002)",
+                isParent: true
+            },
+            {
+                id: 8003,
+                pId: 1,
+                name: "Cell(8003)",
+
+                isParent: true
+            },
+            {
+                id: 8004,
+                pId: 1,
+                name: "Cell(8004)",
+
+                isParent: true
+            },
+            {
+                id: 8005,
+                pId: 1,
+                name: "cell(8005)",
+                isParent: true
+            }];
+            var isAdd = new Array();
+            function beforeDrag(treeId, treeNodes) {
+                return false;
+            }
+            //增加子节点 输入为id号，父id,名字
+            function addTreeNode(subId, treeId, newContent, moveDirction) {
+                var zTree = $.fn.zTree.getZTreeObj("treeDemo");
+                var isExist = zTree.getNodeByParam("id", subId, null);
+                if (isExist) {
+                    editTreeNode(subId, newContent);
+                    if (moveDirction == true) isAdd.push(false);
+                    //alert("flase");
+                } else {
+                    if (moveDirction == true) isAdd.push(true);
+                    //alert(true);
+                    var treeNode = zTree.getNodeByParam("id", treeId, null);
+                    var isParent = treeNode.isParent;
+                    if (treeNode) {
+                        treeNode = zTree.addNodes(treeNode, {
+                            id: subId,
+                            pId: treeNode.id,
+                            isParent: isParent,
+                            name: newContent
+                        });
+                        //alert("treeNode is not null");
+                    } else {
+                        treeNode = zTree.addNodes(null, {
+                            id: subId,
+                            pId: 0,
+                            isParent: isParent,
+                            name: newContent
+                        });
+                    }
+                    if (treeNode) {
+                        //zTree.editName(treeNode[0]);
+                    } else {
+                        alert("叶子节点被锁定，无法增加子节点");
+                    }
+                }
+            }
+            function removeTreeNode(treeId) {
+                var zTree = $.fn.zTree.getZTreeObj("treeDemo");
+                var treeNode = zTree.getNodeByParam("id", treeId, null);
+                //alert(treeNode.id);
+                zTree.removeNode(treeNode);
+            }
+            //更改节点内容，输入为id号，名字
+            function editTreeNode(treeId, newContent) {
+                var zTree = $.fn.zTree.getZTreeObj("treeDemo");
+                var treeNode = zTree.getNodeByParam("id", treeId, null);
+                if(treeNode){
+                treeNode.name = newContent;
+                zTree.updateNode(treeNode);
+              }else{
+              	document.getElementById("rrhState").innerHTML = newContent;
+              	}
+            }
+						//页面初始化
+            $(document).ready(function() {
+                zTreeObj = $.fn.zTree.init($("#treeDemo"), setting, zNodes);
+								receiveStatus();
+            });
+            
+            var iconCount = 1;
+            function updateNode() {
+                var zTree = $.fn.zTree.getZTreeObj("treeDemo");
+                nodes = zTree.getNodes();
+                var nodes_array = zTree.transformToArray(nodes);
+                for (var i = 0,
+                len = nodes_array.length; i < len; ++i) {
+                    if (iconCount > 8) {
+                        nodes_array[i].iconSkin = null;
+                        iconCount = 1;
+                    } else if (nodes_array[i].isParent) {
+                        nodes_array[i].iconSkin = nodes_array[i].iconSkin ? null: "pIcon01";
+                    } else {
+                        nodes_array[i].iconSkin = "icon0" + (iconCount++);
+                    }
+                    zTree.updateNode(nodes_array[i]);
+                }
+            }
+
+            var playFlag = false;
+            var backFlag = false;
+            var timeMove;
+            var timeBackStop;
+            var add = (function() {
+                var addCounter = 0;
+                return function() {
+                    return addCounter += 1;
+                }
+            })();
+            var reduce = (function() {
+                var reduceCounter = 0;
+                return function() {
+                    return reduceCounter -= 1;
+                }
+            })();
+
+            function addOrReduce(isAdd) {
+
+                if (isAdd) {
+                    return add();
+                } else {
+                    return reduce();
+                }
+            }
+						function getNextTreeNode(str, moveDirction) {
+                var newName = str.match(/.*?\(\d{0,}/i).toString().replace(/.*?\(/, "");
+              
+                var treeId = parseInt(newName);
+    					
+                newState = getNameState(str);
+                if (treeId >= 8000 && treeId <= 8005) {
+                    var cell = "Cell(";
+                    cell += newName;
+                    cell += ")";
+                    cell += "<b style=\"color:#40B3DF;\">";
+                    newState = cell + newState;
+                    newState += "</b>";
+                    addTreeNode(treeId, 1, newState, moveDirction);
+                } else if (treeId >= 1000000 && treeId <= 1141000) {
+                    var pId = ((treeId - 1000) / 10000 - 103 + 8000);
+                    var rrh = "RRH(";
+                    rrh += newName;
+                    rrh += ")";
+                    rrh += "<b style=\"color:#40B3DF;\">";
+                    newState = rrh + newState;
+                    newState += "</b>";
+                    addTreeNode(treeId, pId, newState, moveDirction);
+                }
+                if (moveDirction == false) if (isAdd.pop()) removeTreeNode(treeId);
+            }
+            var list = [["21:25:39.532678 : Cell(8005) : ad=LOCKED, op=DISABLED, av=NONE"], ["21:25:39.534861 : Cell(8000) : ad=UNLOCKED, op=ENABLED, av=NONE"], ["21:25:39.536203 : Cell(8003) : ad=LOCKED, op=DISABLED, av=NONE"], ["21:26:11.927913 : RRH(1051000) : ad=UNLOCKED(1), op=DISABLED(0), av=FAILED(32)"], ["RRH(1051000) : ad=UNLOCKED(1), op=DISABLED(0), av=NONE(0)"], ["RRH(1041000) : ad=UNLOCKED(1), op=DISABLED(0), av=FAILED(32)"], ["RRH(1041000) : ad=UNLOCKED(1), op=DISABLED(0), av=NONE(0)"], ["RRH(1041000) : ad=UNLOCKED(1), op=DISABLED(0), av=FAILED(32)"]];
+            var table = {};
+            var treeMap={};
+            var current = -1;
+              function lineMap(curTrace,moveDirction){
+              	
+            		if("cellinfo" in curTrace){
+            				
+            				var treeId=curTrace["cellinfo"]['CELL'];
+            				var newName = treeId.match(/.*?\(\d{0,}/i).toString().replace(/.*?\(/, "");
+            				var cellId = parseInt(newName);
+            				var rrhId;
+            				var apId;
+            				var masId;
+            				var sliceId;
+            		
+            				var newState="";
+            				for(var value in curTrace["cellinfo"]){
+            					if(value=="CELL"){}
+            					else if(value=="AP"){
+            						apId=curTrace["cellinfo"]['AP'];
+            					}
+            					else if(value=="RRH"){
+            		//					alert(cellId);
+            						  rrhId=curTrace["cellinfo"]['RRH'];
+            						  var rrhTitle=rrhId.toString();
+            						  var apTitle=apId.toString();
+            						  if(moveDirction==true){
+            							addTreeNode(rrhId, cellId, rrhTitle, moveDirction);
+            							addTreeNode(apId,rrhId,apTitle,moveDirction);
+            						}else{
+            							if (isAdd.pop()) 
+            								removeTreeNode(apId);
+            							if (isAdd.pop()) 
+            								removeTreeNode(rrhId);
+            						}
+            						
+            						}
+            					else if(value=="MAS"){
+            							masId=curTrace["cellinfo"]['MAS'];
+            						}
+            					else if(value=="SLICE"){
+            							
+            							sliceId=curTrace["cellinfo"]['SLICE'];
+            							if(moveDirction==true){
+            							var masTitle=masId.toString();
+            							var sliceTitle=sliceId.toString();
+            							addTreeNode(masId, cellId, masTitle, moveDirction);
+            							addTreeNode(sliceId,masId,sliceTitle,moveDirction);
+            						}else{
+            							if (isAdd.pop()) 
+            								removeTreeNode(sliceId);
+            							if (isAdd.pop()) 
+            								removeTreeNode(masId);
+            							}
+            						}
+            					
+            				}
+            				
+            		}else if("status" in curTrace){
+            				var content=curTrace['status']['MO'];
+            				
+            //				console.log(content.toString());
+            				var state=curTrace['status']['status'].toString();
+
+            				
+            				state=selectColor(state);
+            		
+            				
+            				var newContent=content.toString()+state;
+
+            				if(!(content.indexOf("CELL"))){
+            					var newName = content.match(/.*?\(\d{0,}/i).toString().replace(/.*?\(/, "");
+           
+            				var cellId = parseInt(newName);
+
+            				            			
+            				editTreeNode(cellId,newContent);
+            				}else if(content.toString().indexOf("PORT")!=-1){
+            					
+            					content=content.match(/ANTENNA.*/).toString();
+            				console.log(content);
+            			
+            				newContent=content.toString()+state;
+            					console.log(newContent);
+            			
+            			console.log(content);
+editTreeNode(content,newContent);
+            					}else
+            					editTreeNode(content,newContent);
+            				if (moveDirction == true) isAdd.push(false);
+            				else {
+            					if (isAdd.pop()) removeTreeNode(treeId);
+            				}
+            		}
+            		  
+            }
+            function lineAdd() {
+                // var LineNumber = addOrReduce(true);
+                current += 1;
+                if (current >= total) {
+                    clearInterval(timeMove);
+                    alert(current);
+                    playFlag = false;
+                    current = total - 1;
+
+                } else {
+										var curTrace=traceList[current];
+										var time="Time Stamp:"+curTrace['timestamp'];
+										document.getElementById("showTime").innerHTML = time;
+                    lineMap(curTrace,true);
+                   // getNextTreeNode(tableStr, true);
+
+                }
+            }
+            function selectColor(str){
+            		if(str.indexOf("FAIL")!=-1){
+            			str= "<b style=\"color:#A00000;\">"+str+"</b>";
+            		}else if(str.indexOf("DEG")!=-1){
+            			str= "<b style=\"color:#FFFF00;\">"+str+"</b>";
+            		}else{
+            			str= "<b style=\"color:#40B3DF;\">"+str+"</b>";
+            		}
+            		return str;
+            }
+          
+            function lineReduce() {
+                //var LineNumber = addOrReduce(false);
+                if (current < 0) {
+                    clearInterval(timeBackStop);
+                    alert(current);
+                    backFlag = false;
+                    current = 0;
+                } else {
+										var curTrace=traceList[current];
+										var time="Time Stamp:"+curTrace['timestamp'];
+										document.getElementById("showTime").innerHTML = time;
+                    lineMap(curTrace,false);
+                    
+                    //document.getElementById("trace").innerHTML = tableStr;
+
+                    
+                    current -= 1;
+
+                }
+            }
+            function whichButton(event){
+            	console.log(event.keyCode);
+            	if(event.keyCode==32){
+            		startTrace();
+            
+            		}else if(event.keyCode==37){
+            			lineReduce();
+            			}else if(event.keyCode==39){
+            				
+            				lineAdd();
+            				}
+            	}
+            function timeStart() {
+
+                timeMove = setInterval(function() {
+                    lineAdd()
+                },
+                300);
+            }
+            function timeBack() {
+
+                timeBackStop = setInterval(function() {
+                    lineReduce()
+                },
+                300);
+            }
+            function timeStop() {
+                if (!playFlag) clearInterval(timeMove);
+
+            }
+            function backStop() {
+                if (!backFlag) clearInterval(timeBackStop);
+
+            }
+            function getNameState(str) {
+                var newState = str.match(/AD=\w+/i).toString().replace(/AD=/, "");
+                newState += ",";
+                newState += str.match(/.*OP=\w+/i).toString().replace(/.*OP=/, "");
+                newState += ",";
+                newState += str.match(/.*AV=\w+/i).toString().replace(/.*AV=/, "");
+                return newState;
+            }
+            
+            
+            //接收服务器返回数据
+            var total=0;			//数据条数
+            var traceList=[]; 
+						function receiveStatus(data){
+							var result=eval({"traceResult": [{"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=DEGRADED(8)", "MO": "RRH(1041000)", "keyTrace": ""}, "timestamp": "21:19:59.136393"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=DEGRADED(8)", "MO": "RRH(1051000)", "keyTrace": ""}, "timestamp": "21:19:59.141689"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=DEGRADED(8)", "MO": "RRH(1061000)", "keyTrace": ""}, "timestamp": "21:19:59.156007"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "CFGMGRCB_LRD(101000)", "keyTrace": ""}, "timestamp": "21:25:38.838970"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1041000)", "keyTrace": ""}, "timestamp": "21:25:38.841460"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=DEPENDENCY(16)", "MO": "RRH(1041000)_ANTENNA_PORT(8)", "keyTrace": ""}, "timestamp": "21:25:38.845297"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=DEPENDENCY(16)", "MO": "RRH(1041000)_ANTENNA_PORT(9)", "keyTrace": ""}, "timestamp": "21:25:38.845404"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=NONE(0)", "MO": "RRH(1041000)", "keyTrace": ""}, "timestamp": "21:25:38.881934"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1051000)", "keyTrace": ""}, "timestamp": "21:25:38.885759"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1061000)", "keyTrace": ""}, "timestamp": "21:25:38.888676"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=NONE(0)", "MO": "RRH(1051000)", "keyTrace": ""}, "timestamp": "21:25:38.900531"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=NONE(0)", "MO": "RRH(1061000)", "keyTrace": ""}, "timestamp": "21:25:38.900757"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=DEPENDENCY(16)", "MO": "RRH(1051000)_ANTENNA_PORT(6)", "keyTrace": ""}, "timestamp": "21:25:39.521607"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=DEPENDENCY(16)", "MO": "RRH(1051000)_ANTENNA_PORT(7)", "keyTrace": ""}, "timestamp": "21:25:39.521720"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=DEPENDENCY(16)", "MO": "RRH(1061000)_ANTENNA_PORT(10)", "keyTrace": ""}, "timestamp": "21:25:39.522316"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=DEPENDENCY(16)", "MO": "RRH(1061000)_ANTENNA_PORT(11)", "keyTrace": ""}, "timestamp": "21:25:39.522420"}, {"cellinfo": {"CELL": "CELL(8003)", "AP": "ANTENNA_PORT(6)", "RRH": "RRH(1041000)"}, "timestamp": "21:25:39.528531"}, {"cellinfo": {"CELL": "CELL(8003)", "AP": "ANTENNA_PORT(6)", "RRH": "RRH(1041000)"}, "timestamp": "21:25:39.528556"}, {"cellinfo": {"CELL": "CELL(8003)", "AP": "ANTENNA_PORT(7)", "RRH": "RRH(1041000)"}, "timestamp": "21:25:39.528578"}, {"cellinfo": {"CELL": "CELL(8003)", "AP": "ANTENNA_PORT(7)", "RRH": "RRH(1041000)"}, "timestamp": "21:25:39.528599"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8003)", "keyTrace": ""}, "timestamp": "21:25:39.528792"}, {"cellinfo": {"CELL": "CELL(8004)", "AP": "ANTENNA_PORT(8)", "RRH": "RRH(1051000)"}, "timestamp": "21:25:39.530492"}, {"cellinfo": {"CELL": "CELL(8004)", "AP": "ANTENNA_PORT(8)", "RRH": "RRH(1051000)"}, "timestamp": "21:25:39.530517"}, {"cellinfo": {"CELL": "CELL(8004)", "AP": "ANTENNA_PORT(9)", "RRH": "RRH(1051000)"}, "timestamp": "21:25:39.530539"}, {"cellinfo": {"CELL": "CELL(8004)", "AP": "ANTENNA_PORT(9)", "RRH": "RRH(1051000)"}, "timestamp": "21:25:39.530560"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8004)", "keyTrace": ""}, "timestamp": "21:25:39.530734"}, {"cellinfo": {"CELL": "CELL(8005)", "AP": "ANTENNA_PORT(10)", "RRH": "RRH(1061000)"}, "timestamp": "21:25:39.532435"}, {"cellinfo": {"CELL": "CELL(8005)", "AP": "ANTENNA_PORT(10)", "RRH": "RRH(1061000)"}, "timestamp": "21:25:39.532460"}, {"cellinfo": {"CELL": "CELL(8005)", "AP": "ANTENNA_PORT(11)", "RRH": "RRH(1061000)"}, "timestamp": "21:25:39.532481"}, {"cellinfo": {"CELL": "CELL(8005)", "AP": "ANTENNA_PORT(11)", "RRH": "RRH(1061000)"}, "timestamp": "21:25:39.532503"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8005)", "keyTrace": ""}, "timestamp": "21:25:39.532678"}, {"status": {"status": "AD=UNLOCKED, OP=ENABLED, AV=NONE", "MO": "CELL(8000)", "keyTrace": ""}, "timestamp": "21:25:39.534861"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8003)", "keyTrace": ""}, "timestamp": "21:25:39.536203"}, {"status": {"status": "AD=UNLOCKED, OP=ENABLED, AV=NONE", "MO": "CELL(8001)", "keyTrace": ""}, "timestamp": "21:25:39.536562"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8004)", "keyTrace": ""}, "timestamp": "21:25:39.537865"}, {"status": {"status": "AD=UNLOCKED, OP=ENABLED, AV=NONE", "MO": "CELL(8002)", "keyTrace": ""}, "timestamp": "21:25:39.538219"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8005)", "keyTrace": ""}, "timestamp": "21:25:39.539525"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8003)", "keyTrace": ""}, "timestamp": "21:25:40.192644"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8004)", "keyTrace": ""}, "timestamp": "21:25:40.205891"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8005)", "keyTrace": ""}, "timestamp": "21:25:40.209047"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8003)", "keyTrace": ""}, "timestamp": "21:25:40.830506"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8004)", "keyTrace": ""}, "timestamp": "21:25:40.833677"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8005)", "keyTrace": ""}, "timestamp": "21:25:40.836864"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:25:41.560250"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:25:41.560410"}, {"status": {"status": "AD=UNLOCKED, OP=DISABLED, AV=DEPENDENCY", "MO": "CELL(8000)", "keyTrace": ""}, "timestamp": "21:25:41.561867"}, {"status": {"status": "AD=UNLOCKED, OP=DISABLED, AV=DEPENDENCY", "MO": "CELL(8001)", "keyTrace": ""}, "timestamp": "21:25:41.561971"}, {"status": {"status": "AD=UNLOCKED, OP=DISABLED, AV=DEPENDENCY", "MO": "CELL(8002)", "keyTrace": ""}, "timestamp": "21:25:41.562070"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MB(302000)", "keyTrace": ""}, "timestamp": "21:25:41.562270"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=FAILED(32)", "MO": "MB(302000)", "keyTrace": ""}, "timestamp": "21:25:41.563395"}, {"status": {"status": "RORESET", "MO": "MB(302000)", "keyTrace": ""}, "timestamp": "21:25:41.563549"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MB(303000)", "keyTrace": ""}, "timestamp": "21:25:41.563754"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=FAILED(32)", "MO": "MB(303000)", "keyTrace": ""}, "timestamp": "21:25:41.565911"}, {"status": {"status": "RORESET", "MO": "MB(303000)", "keyTrace": ""}, "timestamp": "21:25:41.566047"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:25:41.609901"}, {"status": {"status": "AD=DISABLED", "MO": "MAS(302301)_SLICE(0)", "keyTrace": ""}, "timestamp": "21:25:41.609940"}, {"status": {"status": "OP=DISABLED, AV=OFF_LINE, PR=NOT_INITIALIZED", "MO": "MB(302000)", "keyTrace": ""}, "timestamp": "21:25:41.610253"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:25:41.613614"}, {"status": {"status": "AD=DISABLED", "MO": "MAS(302301)_SLICE(1)", "keyTrace": ""}, "timestamp": "21:25:41.613654"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:25:41.616026"}, {"status": {"status": "AD=DISABLED", "MO": "MAS(302301)_SLICE(2)", "keyTrace": ""}, "timestamp": "21:25:41.616065"}, {"status": {"status": "OP=DISABLED, AV=OFF_LINE, PR=NOT_INITIALIZED", "MO": "MB(303000)", "keyTrace": ""}, "timestamp": "21:25:41.624066"}, {"status": {"status": "AD=UNLOCKED, OP=DISABLED, AV=DEPENDENCY", "MO": "CELL(8000)", "keyTrace": ""}, "timestamp": "21:25:41.983969"}, {"status": {"status": "AD=UNLOCKED, OP=DISABLED, AV=DEPENDENCY", "MO": "CELL(8001)", "keyTrace": ""}, "timestamp": "21:25:41.992861"}, {"status": {"status": "AD=UNLOCKED, OP=DISABLED, AV=DEPENDENCY", "MO": "CELL(8002)", "keyTrace": ""}, "timestamp": "21:25:41.999680"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=DEGRADED(8)", "MO": "RRH(1031000)", "keyTrace": ""}, "timestamp": "21:25:50.490613"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "CFGMGRCB_LRD(101000)", "keyTrace": ""}, "timestamp": "21:25:53.127638"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=FAILED(32)", "MO": "RRH(1051000)", "keyTrace": ""}, "timestamp": "21:26:11.927913"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=NONE(0)", "MO": "RRH(1051000)", "keyTrace": ""}, "timestamp": "21:26:11.938555"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1051000)_ANTENNA_PORT(6)", "keyTrace": ""}, "timestamp": "21:26:11.940556"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=DEGRADED(8)", "MO": "RRH(1051000)", "keyTrace": ""}, "timestamp": "21:26:11.940664"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1051000)_ANTENNA_PORT(7)", "keyTrace": ""}, "timestamp": "21:26:11.940784"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1051000)", "keyTrace": ""}, "timestamp": "21:26:11.940887"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8004)", "keyTrace": ""}, "timestamp": "21:26:11.947075"}, {"status": {"status": "AD=UNLOCKED, OP=DISABLED, AV=FAILED", "MO": "CELL(8001)", "keyTrace": ""}, "timestamp": "21:26:11.948692"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=FAILED(32)", "MO": "RRH(1041000)", "keyTrace": ""}, "timestamp": "21:26:12.030074"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=NONE(0)", "MO": "RRH(1041000)", "keyTrace": ""}, "timestamp": "21:26:12.035586"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1041000)_ANTENNA_PORT(8)", "keyTrace": ""}, "timestamp": "21:26:12.038476"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=DEGRADED(8)", "MO": "RRH(1041000)", "keyTrace": ""}, "timestamp": "21:26:12.038586"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1041000)_ANTENNA_PORT(9)", "keyTrace": ""}, "timestamp": "21:26:12.038707"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1041000)", "keyTrace": ""}, "timestamp": "21:26:12.038809"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8003)", "keyTrace": ""}, "timestamp": "21:26:12.042505"}, {"status": {"status": "AD=UNLOCKED, OP=DISABLED, AV=FAILED", "MO": "CELL(8000)", "keyTrace": ""}, "timestamp": "21:26:12.046795"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=FAILED(32)", "MO": "RRH(1061000)", "keyTrace": ""}, "timestamp": "21:26:12.196589"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=NONE(0)", "MO": "RRH(1061000)", "keyTrace": ""}, "timestamp": "21:26:12.206151"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1061000)_ANTENNA_PORT(10)", "keyTrace": ""}, "timestamp": "21:26:12.207472"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=DEGRADED(8)", "MO": "RRH(1061000)", "keyTrace": ""}, "timestamp": "21:26:12.207581"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1061000)_ANTENNA_PORT(11)", "keyTrace": ""}, "timestamp": "21:26:12.207701"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1061000)", "keyTrace": ""}, "timestamp": "21:26:12.207803"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8005)", "keyTrace": ""}, "timestamp": "21:26:12.211500"}, {"status": {"status": "AD=UNLOCKED, OP=DISABLED, AV=FAILED", "MO": "CELL(8002)", "keyTrace": ""}, "timestamp": "21:26:12.214453"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1041000)", "keyTrace": ""}, "timestamp": "21:26:13.808336"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=DEGRADED(8)", "MO": "RRH(1041000)", "keyTrace": ""}, "timestamp": "21:26:13.846249"}, {"status": {"status": "RORESET", "MO": "RRH(1041000)", "keyTrace": ""}, "timestamp": "21:26:13.846454"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=DEPENDENCY(16)", "MO": "RRH(1041000)_ANTENNA_PORT(8)", "keyTrace": ""}, "timestamp": "21:26:13.847399"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=DEPENDENCY(16)", "MO": "RRH(1041000)_ANTENNA_PORT(9)", "keyTrace": ""}, "timestamp": "21:26:13.847506"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8003)", "keyTrace": ""}, "timestamp": "21:26:13.850528"}, {"status": {"status": "AD=UNLOCKED, OP=DISABLED, AV=FAILED", "MO": "CELL(8000)", "keyTrace": ""}, "timestamp": "21:26:13.851564"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8003)", "keyTrace": ""}, "timestamp": "21:26:13.852954"}, {"status": {"status": "OP=DISABLED, AV=OFF_LINE, PR=NOT_INITIALIZED", "MO": "RRH(1041000)", "keyTrace": ""}, "timestamp": "21:26:13.869830"}, {"status": {"status": "OP=DISABLED, AV=OFF_LINE, PR=NOT_INITIALIZED", "MO": "RRH(1041000)", "keyTrace": ""}, "timestamp": "21:26:13.870088"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1051000)", "keyTrace": ""}, "timestamp": "21:26:13.880571"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1061000)", "keyTrace": ""}, "timestamp": "21:26:13.888026"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=DEGRADED(8)", "MO": "RRH(1051000)", "keyTrace": ""}, "timestamp": "21:26:13.921634"}, {"status": {"status": "RORESET", "MO": "RRH(1051000)", "keyTrace": ""}, "timestamp": "21:26:13.921838"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=DEPENDENCY(16)", "MO": "RRH(1051000)_ANTENNA_PORT(6)", "keyTrace": ""}, "timestamp": "21:26:13.922781"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=DEPENDENCY(16)", "MO": "RRH(1051000)_ANTENNA_PORT(7)", "keyTrace": ""}, "timestamp": "21:26:13.922888"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8004)", "keyTrace": ""}, "timestamp": "21:26:13.926435"}, {"status": {"status": "AD=UNLOCKED, OP=DISABLED, AV=FAILED", "MO": "CELL(8001)", "keyTrace": ""}, "timestamp": "21:26:13.928075"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8004)", "keyTrace": ""}, "timestamp": "21:26:13.929476"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=DEGRADED(8)", "MO": "RRH(1061000)", "keyTrace": ""}, "timestamp": "21:26:13.936724"}, {"status": {"status": "RORESET", "MO": "RRH(1061000)", "keyTrace": ""}, "timestamp": "21:26:13.936928"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=DEPENDENCY(16)", "MO": "RRH(1061000)_ANTENNA_PORT(10)", "keyTrace": ""}, "timestamp": "21:26:13.937867"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=DEPENDENCY(16)", "MO": "RRH(1061000)_ANTENNA_PORT(11)", "keyTrace": ""}, "timestamp": "21:26:13.937974"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8005)", "keyTrace": ""}, "timestamp": "21:26:13.941174"}, {"status": {"status": "AD=UNLOCKED, OP=DISABLED, AV=FAILED", "MO": "CELL(8002)", "keyTrace": ""}, "timestamp": "21:26:13.942575"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8005)", "keyTrace": ""}, "timestamp": "21:26:13.944040"}, {"status": {"status": "OP=DISABLED, AV=OFF_LINE, PR=NOT_INITIALIZED", "MO": "RRH(1051000)", "keyTrace": ""}, "timestamp": "21:26:13.945898"}, {"status": {"status": "OP=DISABLED, AV=OFF_LINE, PR=NOT_INITIALIZED", "MO": "RRH(1051000)", "keyTrace": ""}, "timestamp": "21:26:13.946149"}, {"status": {"status": "OP=DISABLED, AV=OFF_LINE, PR=NOT_INITIALIZED", "MO": "RRH(1061000)", "keyTrace": ""}, "timestamp": "21:26:13.959398"}, {"status": {"status": "OP=DISABLED, AV=OFF_LINE, PR=NOT_INITIALIZED", "MO": "RRH(1061000)", "keyTrace": ""}, "timestamp": "21:26:13.959652"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=FAILED|INITIALIZING(96)", "MO": "RRH(1041000)", "keyTrace": ""}, "timestamp": "21:26:24.291836"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=FAILED|INITIALIZING(96)", "MO": "RRH(1051000)", "keyTrace": ""}, "timestamp": "21:26:24.292452"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=DEGRADED|INITIALIZING(72)", "MO": "RRH(1061000)", "keyTrace": ""}, "timestamp": "21:26:24.301383"}, {"status": {"status": "OP=ENABLED, AV=NOT_APPLICABLE, PR=NOT_APPLICABLE", "MO": "RRH(1041000)", "keyTrace": ""}, "timestamp": "21:26:24.310107"}, {"status": {"status": "OP=ENABLED, AV=NOT_APPLICABLE, PR=NOT_APPLICABLE", "MO": "RRH(1051000)", "keyTrace": ""}, "timestamp": "21:26:24.315528"}, {"status": {"status": "OP=ENABLED, AV=NOT_APPLICABLE, PR=NOT_APPLICABLE", "MO": "RRH(1061000)", "keyTrace": ""}, "timestamp": "21:26:24.333026"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=FAILED|INITIALIZING(96)", "MO": "RRH(1041000)", "keyTrace": ""}, "timestamp": "21:26:25.393261"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=FAILED(32)", "MO": "RRH(1041000)", "keyTrace": ""}, "timestamp": "21:26:25.395958"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1041000)_ANTENNA_PORT(8)", "keyTrace": ""}, "timestamp": "21:26:25.398314"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=DEGRADED(8)", "MO": "RRH(1041000)", "keyTrace": ""}, "timestamp": "21:26:25.398433"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1041000)_ANTENNA_PORT(9)", "keyTrace": ""}, "timestamp": "21:26:25.398557"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1041000)", "keyTrace": ""}, "timestamp": "21:26:25.398663"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8003)", "keyTrace": ""}, "timestamp": "21:26:25.402700"}, {"status": {"status": "AD=UNLOCKED, OP=DISABLED, AV=FAILED", "MO": "CELL(8000)", "keyTrace": ""}, "timestamp": "21:26:25.405469"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=FAILED|INITIALIZING(96)", "MO": "RRH(1051000)", "keyTrace": ""}, "timestamp": "21:26:25.407231"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=DEGRADED|INITIALIZING(72)", "MO": "RRH(1061000)", "keyTrace": ""}, "timestamp": "21:26:25.409735"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=FAILED(32)", "MO": "RRH(1051000)", "keyTrace": ""}, "timestamp": "21:26:25.415099"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=DEGRADED(8)", "MO": "RRH(1061000)", "keyTrace": ""}, "timestamp": "21:26:25.417007"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1051000)_ANTENNA_PORT(6)", "keyTrace": ""}, "timestamp": "21:26:25.421117"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=DEGRADED(8)", "MO": "RRH(1051000)", "keyTrace": ""}, "timestamp": "21:26:25.421233"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1051000)_ANTENNA_PORT(7)", "keyTrace": ""}, "timestamp": "21:26:25.421355"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1051000)", "keyTrace": ""}, "timestamp": "21:26:25.421460"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1041000)", "keyTrace": ""}, "timestamp": "21:26:25.423082"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1061000)_ANTENNA_PORT(10)", "keyTrace": ""}, "timestamp": "21:26:25.423435"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=DEGRADED(8)", "MO": "RRH(1061000)", "keyTrace": ""}, "timestamp": "21:26:25.423548"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1061000)_ANTENNA_PORT(11)", "keyTrace": ""}, "timestamp": "21:26:25.423707"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1061000)", "keyTrace": ""}, "timestamp": "21:26:25.423813"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8004)", "keyTrace": ""}, "timestamp": "21:26:25.427738"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8005)", "keyTrace": ""}, "timestamp": "21:26:25.432963"}, {"status": {"status": "AD=UNLOCKED, OP=DISABLED, AV=FAILED", "MO": "CELL(8001)", "keyTrace": ""}, "timestamp": "21:26:25.437088"}, {"status": {"status": "AD=UNLOCKED, OP=DISABLED, AV=FAILED", "MO": "CELL(8002)", "keyTrace": ""}, "timestamp": "21:26:25.439174"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1051000)", "keyTrace": ""}, "timestamp": "21:26:25.451380"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "RRH(1061000)", "keyTrace": ""}, "timestamp": "21:26:25.452187"}, {"status": {"status": "OP=DISABLED, AV=NOT_INSTALLED, PR=NOT_INITIALIZED", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:26:57.588122"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:26:57.588254"}, {"status": {"status": "OP=DISABLED, AV=NOT_INSTALLED, PR=NOT_INITIALIZED", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:26:57.588896"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:26:57.588964"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:26:57.628571"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:26:57.628721"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:26:57.996243"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:26:57.996595"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:26:57.996924"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:26:57.997249"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:26:57.997578"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:26:57.997651"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:26:57.998835"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:26:57.998898"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:26:58.010246"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:26:58.011153"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:26:58.016789"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:26:58.017127"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:26:58.018175"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:26:58.018512"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:26:58.091312"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:26:58.091700"}, {"status": {"status": "OP=DISABLED, AV=NOT_INSTALLED, PR=NOT_INITIALIZED", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:26:58.296896"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:26:58.297030"}, {"status": {"status": "OP=DISABLED, AV=NOT_INSTALLED, PR=NOT_INITIALIZED", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:26:58.297279"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:26:58.297343"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:26:58.321572"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:26:58.321723"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:26:59.082609"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:26:59.082959"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:26:59.083334"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:26:59.083672"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:26:59.084021"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:26:59.084084"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:26:59.084390"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:26:59.084450"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:26:59.085199"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:26:59.086082"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:26:59.119255"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:26:59.119590"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:26:59.119916"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:26:59.120240"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:26:59.205122"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:26:59.205505"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:04.889590"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:04.892009"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:04.894138"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:04.894528"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:04.930831"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:04.931242"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:05.708213"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:05.708688"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:05.712324"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:05.712714"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:05.713483"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:05.713868"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=FAILED|INITIALIZING(96)", "MO": "MB(303000)", "keyTrace": ""}, "timestamp": "21:27:12.779432"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=FAILED|INITIALIZING(96)", "MO": "MB(302000)", "keyTrace": ""}, "timestamp": "21:27:13.611497"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:27.787243"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:27.789223"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:27.793294"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:27.795252"}, {"status": {"status": "OP=ENABLED, AV=NOT_APPLICABLE, PR=NOT_APPLICABLE", "MO": "MB(302000)", "keyTrace": ""}, "timestamp": "21:27:27.805130"}, {"status": {"status": "OP=ENABLED, AV=NOT_APPLICABLE, PR=NOT_APPLICABLE", "MO": "MB(303000)", "keyTrace": ""}, "timestamp": "21:27:27.806798"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=DEGRADED(8)", "MO": "MB(302000)", "keyTrace": ""}, "timestamp": "21:27:28.805556"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=DEGRADED(8)", "MO": "MB(303000)", "keyTrace": ""}, "timestamp": "21:27:28.808965"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:28.820535"}, {"status": {"status": "AD=UNLOCKED(1), OP=DISABLED(0), AV=INITIALIZING(64)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:28.822294"}, {"status": {"status": "OP=ENABLED, AV=NOT_APPLICABLE, PR=NOT_APPLICABLE", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:28.828759"}, {"status": {"status": "OP=ENABLED, AV=NOT_APPLICABLE, PR=NOT_APPLICABLE", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:28.828965"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:28.829021"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=DEGRADED(8)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:28.829663"}, {"status": {"status": "AD=NC/DISABLED", "MO": "MAS(302301)_SLICE(0)", "keyTrace": ""}, "timestamp": "21:27:28.829744"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:28.830075"}, {"status": {"status": "AD=NC/DISABLED", "MO": "MAS(302301)_SLICE(0)", "keyTrace": ""}, "timestamp": "21:27:28.830110"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=DEGRADED(8)", "MO": "MB(302000)", "keyTrace": ""}, "timestamp": "21:27:28.833724"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=DEGRADED(8)", "MO": "MB(302000)", "keyTrace": ""}, "timestamp": "21:27:28.834904"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:28.837445"}, {"status": {"status": "AD=NC/DISABLED", "MO": "MAS(302301)_SLICE(1)", "keyTrace": ""}, "timestamp": "21:27:28.837482"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:28.837804"}, {"status": {"status": "AD=NC/DISABLED", "MO": "MAS(302301)_SLICE(1)", "keyTrace": ""}, "timestamp": "21:27:28.837838"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:28.838245"}, {"status": {"status": "AD=NC/DISABLED", "MO": "MAS(302301)_SLICE(2)", "keyTrace": ""}, "timestamp": "21:27:28.838282"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:28.838598"}, {"status": {"status": "AD=NC/DISABLED", "MO": "MAS(302301)_SLICE(2)", "keyTrace": ""}, "timestamp": "21:27:28.838633"}, {"status": {"status": "OP=ENABLED, AV=NOT_APPLICABLE, PR=NOT_APPLICABLE", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:28.839145"}, {"status": {"status": "OP=ENABLED, AV=NOT_APPLICABLE, PR=NOT_APPLICABLE", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:28.839348"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:28.839400"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:28.839657"}, {"status": {"status": "AD=NC/DISABLED", "MO": "MAS(303301)_SLICE(0)", "keyTrace": ""}, "timestamp": "21:27:28.839692"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:28.840011"}, {"status": {"status": "AD=NC/DISABLED", "MO": "MAS(303301)_SLICE(0)", "keyTrace": ""}, "timestamp": "21:27:28.840045"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:28.840359"}, {"status": {"status": "AD=NC/DISABLED", "MO": "MAS(303301)_SLICE(1)", "keyTrace": ""}, "timestamp": "21:27:28.840394"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:28.840709"}, {"status": {"status": "AD=NC/DISABLED", "MO": "MAS(303301)_SLICE(1)", "keyTrace": ""}, "timestamp": "21:27:28.840744"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:28.841058"}, {"status": {"status": "AD=NC/DISABLED", "MO": "MAS(303301)_SLICE(2)", "keyTrace": ""}, "timestamp": "21:27:28.841092"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:28.841407"}, {"status": {"status": "AD=NC/DISABLED", "MO": "MAS(303301)_SLICE(2)", "keyTrace": ""}, "timestamp": "21:27:28.841442"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=DEGRADED(8)", "MO": "MB(303000)", "keyTrace": ""}, "timestamp": "21:27:28.850932"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:29.830609"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:29.848065"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:29.860713"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:29.861039"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:29.861671"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:29.862199"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:29.862686"}, {"status": {"status": "AD=ENABLED", "MO": "MAS(302301)_SLICE(0)", "keyTrace": ""}, "timestamp": "21:27:29.862722"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:29.863101"}, {"status": {"status": "AD=ENABLED", "MO": "MAS(302301)_SLICE(0)", "keyTrace": ""}, "timestamp": "21:27:29.863136"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:29.863464"}, {"status": {"status": "AD=ENABLED", "MO": "MAS(302301)_SLICE(1)", "keyTrace": ""}, "timestamp": "21:27:29.863499"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:29.864013"}, {"status": {"status": "AD=ENABLED", "MO": "MAS(302301)_SLICE(1)", "keyTrace": ""}, "timestamp": "21:27:29.864048"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:29.864375"}, {"status": {"status": "AD=ENABLED", "MO": "MAS(302301)_SLICE(2)", "keyTrace": ""}, "timestamp": "21:27:29.864511"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(302301)", "keyTrace": ""}, "timestamp": "21:27:29.865312"}, {"status": {"status": "AD=ENABLED", "MO": "MAS(302301)_SLICE(2)", "keyTrace": ""}, "timestamp": "21:27:29.865349"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:29.877549"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:29.877872"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8003)", "keyTrace": ""}, "timestamp": "21:27:29.878619"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8004)", "keyTrace": ""}, "timestamp": "21:27:29.880412"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:29.880861"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:29.881383"}, {"status": {"status": "AD=LOCKED, OP=DISABLED, AV=NONE", "MO": "CELL(8005)", "keyTrace": ""}, "timestamp": "21:27:29.882754"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:29.883552"}, {"status": {"status": "AD=ENABLED", "MO": "MAS(303301)_SLICE(0)", "keyTrace": ""}, "timestamp": "21:27:29.883590"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:29.883926"}, {"status": {"status": "AD=ENABLED", "MO": "MAS(303301)_SLICE(0)", "keyTrace": ""}, "timestamp": "21:27:29.883960"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:29.884287"}, {"status": {"status": "AD=ENABLED", "MO": "MAS(303301)_SLICE(1)", "keyTrace": ""}, "timestamp": "21:27:29.884322"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:29.884647"}, {"status": {"status": "AD=ENABLED", "MO": "MAS(303301)_SLICE(1)", "keyTrace": ""}, "timestamp": "21:27:29.884682"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:29.885079"}, {"status": {"status": "AD=ENABLED", "MO": "MAS(303301)_SLICE(2)", "keyTrace": ""}, "timestamp": "21:27:29.885115"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=NONE(0)", "MO": "MAS(303301)", "keyTrace": ""}, "timestamp": "21:27:29.885440"}, {"status": {"status": "AD=ENABLED", "MO": "MAS(303301)_SLICE(2)", "keyTrace": ""}, "timestamp": "21:27:29.885474"}, {"cellinfo": {"CELL": "CELL(8000)", "MAS": "MAS(303301)", "SLICE": "SLICE(0)"}, "timestamp": "21:27:29.941742"}, {"cellinfo": {"CELL": "CELL(8001)", "MAS": "MAS(303301)", "SLICE": "SLICE(1)"}, "timestamp": "21:27:29.943009"}, {"cellinfo": {"CELL": "CELL(8002)", "MAS": "MAS(303301)", "SLICE": "SLICE(2)"}, "timestamp": "21:27:29.944211"}, {"status": {"status": "AD=UNLOCKED, OP=ENABLED, AV=NONE", "MO": "CELL(8000)", "keyTrace": ""}, "timestamp": "21:27:29.953927"}, {"status": {"status": "AD=UNLOCKED, OP=ENABLED, AV=NONE", "MO": "CELL(8001)", "keyTrace": ""}, "timestamp": "21:27:29.954328"}, {"status": {"status": "AD=UNLOCKED, OP=ENABLED, AV=NONE", "MO": "CELL(8002)", "keyTrace": ""}, "timestamp": "21:27:29.954723"}, {"status": {"status": "AD=UNLOCKED(1), OP=ENABLED(1), AV=DEGRADED(8)", "MO": "RRH(1031000)", "keyTrace": ""}, "timestamp": "21:27:47.575131"}, {"cellinfo": {"CELL": "CELL(8003)", "MAS": "MAS(302301)", "SLICE": "SLICE(0)"}, "timestamp": "21:33:41.787677"}, {"status": {"status": "AD=UNLOCKED, OP=ENABLED, AV=NONE", "MO": "CELL(8003)", "keyTrace": ""}, "timestamp": "21:33:41.806729"}, {"cellinfo": {"CELL": "CELL(8004)", "MAS": "MAS(302301)", "SLICE": "SLICE(1)"}, "timestamp": "21:33:52.600346"}, {"status": {"status": "AD=UNLOCKED, OP=ENABLED, AV=NONE", "MO": "CELL(8004)", "keyTrace": ""}, "timestamp": "21:33:52.617192"}, {"cellinfo": {"CELL": "CELL(8005)", "MAS": "MAS(302301)", "SLICE": "SLICE(2)"}, "timestamp": "21:34:06.445892"}, {"status": {"status": "AD=UNLOCKED, OP=ENABLED, AV=NONE", "MO": "CELL(8005)", "keyTrace": ""}, "timestamp": "21:34:06.465138"}], "Startime": 0, "Endtime": 305});
+							total=result.Endtime;
+							alert(total);
+							traceList=result.traceResult;
+							
+						}
+            function startTrace() {
+								
+               // updateNode(zTreeObj);
+                if (backFlag) {
+                    backFlag = false;
+                    backStop();
+
+                }
+                playFlag ^= true;
+                if (playFlag) timeStart();
+                else timeStop();
+            }
+            function backTrace() {
+
+                if (playFlag) {
+                    playFlag = false;
+                    timeStop();
+
+                }
+
+                backFlag ^= true;
+
+                if (backFlag) {
+
+                    timeBack();
+
+                }
+
+                else backStop();
+            }
+            function show(element){
+            	document.getElementById("alarm").title="alarm";
+            	
+            	}
+            function hide(){
+            	document.getElementById("alarm").title="";
+            	}
+        </script> 
+  <style type="text/css">
+            .ztree li span.button.pIcon01_ico_open{margin-right:2px; background: url(css/img/diy/1_open.png)
+            no-repeat scroll 0 0 transparent; vertical-align:top; *vertical-align:middle}
+            .ztree li span.button.pIcon01_ico_close{margin-right:2px; background: url(css/img/diy/1_close.png)
+            no-repeat scroll 0 0 transparent; vertical-align:top; *vertical-align:middle}
+            .ztree li span.button.icon01_ico_docu{margin-right:2px; background: url(css/img/diy/2.png)
+            no-repeat scroll 0 0 transparent; vertical-align:top; *vertical-align:middle}
+            .ztree li span.button.icon02_ico_docu{margin-right:2px; background: url(css/img/diy/3.png)
+            no-repeat scroll 0 0 transparent; vertical-align:top; *vertical-align:middle}
+            .ztree li span.button.icon03_ico_docu{margin-right:2px; background: url(css/img/diy/4.png)
+            no-repeat scroll 0 0 transparent; vertical-align:top; *vertical-align:middle}
+            .ztree li span.button.icon04_ico_docu{margin-right:2px; background: url(css/img/diy/5.png)
+            no-repeat scroll 0 0 transparent; vertical-align:top; *vertical-align:middle}
+            .ztree li span.button.icon05_ico_docu{margin-right:2px; background: url(css/img/diy/6.png)
+            no-repeat scroll 0 0 transparent; vertical-align:top; *vertical-align:middle}
+            .ztree li span.button.icon06_ico_docu{margin-right:2px; background: url(css/img/diy/7.png)
+            no-repeat scroll 0 0 transparent; vertical-align:top; *vertical-align:middle}
+            .ztree li span.button.icon07_ico_docu{margin-right:2px; background: url(css/img/diy/8.png)
+            no-repeat scroll 0 0 transparent; vertical-align:top; *vertical-align:middle}
+            .ztree li span.button.icon08_ico_docu{margin-right:2px; background: url(css/img/diy/9.png)
+            no-repeat scroll 0 0 transparent; vertical-align:top; *vertical-align:middle}
+            .ztree li span.button.firstPage {float:right; margin-left:2px; margin-right:
+            0; background-position:-144px -16px; vertical-align:top; *vertical-align:middle}
+            .ztree li span.button.prevPage {float:right; margin-left:2px; margin-right:
+            0; background-position:-144px -48px; vertical-align:top; *vertical-align:middle}
+            .ztree li span.button.nextPage {float:right; margin-left:2px; margin-right:
+            0; background-position:-144px -64px; vertical-align:top; *vertical-align:middle}
+            .ztree li span.button.lastPage {float:right; margin-left:2px; margin-right:
+            0; background-position:-144px -32px; vertical-align:top; *vertical-align:middle}
+          #customers
+  {
+  font-family:"Trebuchet MS", Arial, Helvetica, sans-serif;
+  width:100%;
+  border-collapse:collapse;
+  }
+
+#customers td, #customers th 
+  {
+  font-size:1em;
+  border:1px solid #98bf21;
+  padding:3px 7px 2px 7px;
+  }
+
+#customers th 
+  {
+  font-size:1.1em;
+  text-align:left;
+  padding-top:5px;
+  padding-bottom:4px;
+  background-color:#A7C942;
+  color:#ffffff;
+  }
+
+#customers tr.alt td 
+  {
+  color:#000000;
+  background-color:#EAF2D3;
+  }
+        </style> 
+ </head> 
+ <body onkeyup="whichButton(event)"; background:url("./img/background.jpg")> 
+  <div class="container-fluid"> 
+   <div class="row"> 
+    <div class="col-md-12"> 
+     <h3> GoldenEye Trace Replay </h3> 
+    </div> 
+   </div> 
+   <div class="row"> 
+    <div class="col-md-8"> 
+     <h3 id="showTime"> Time Stamp: </h3> 
+    </div> 
+    <div class="col-md-2"> 
+     <button type="button" class="btn btn-default" onclick="startTrace()"> move </button> 
+    </div> 
+    <div class="col-md-2"> 
+     <button type="button" class="btn btn-default" onclick="backTrace()"> back </button> 
+    </div> 
+   </div> 
+   <div class="row"> 
+    <div class="col-md-8"> 
+   
+      
+       
+       <div class="zTreeDemoBackground left"> 
+        <ul id="treeDemo" class="ztree"> 
+        </ul> 
+       </div> 
+       
+
+    </div> 
+    <div class="col-md-4"> 
+     <h2> Key Trace: </h2> 
+     <p id="trace"> main: </p> 
+     <p> <a id="alarm" class="btn" href="#" onmouseover="show(this)" onmouseout="hide()" title=""> View details &raquo; </a> </p> 
+    </div> 
+   </div> 
+   <div class="row"> 
+    <div class="col-md-8"> 
+   <div id="customers"> 
+    <h2>Table with side headings</h2> 
+    <table> 
+     <tbody>
+      <tr> 
+       <th>Title</th> 
+       <td id="rrhState">Data</td> 
+      </tr> 
+      <tr> 
+       <th>Title</th> 
+       <td>Data</td> 
+      </tr> 
+      <tr> 
+       <th>Title</th> 
+       <td>Data</td> 
+      </tr> 
+      <tr> 
+       <th>Title</th> 
+       <td>Data</td> 
+      </tr> 
+      <tr> 
+       <th>Title</th> 
+       <td>Data</td> 
+      </tr> 
+     </tbody>
+    </table> 
+   </div> 
+    </div> 
+   </div> 
+  </div> 
+  <script src="js/bootstrap.min.js">
+        </script> 
+  <script src="js/scripts.js">
+        </script>  
+ </body>
+</html>

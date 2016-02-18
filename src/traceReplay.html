@@ -1,0 +1,545 @@
+## -- coding: utf-8 --
+<!DOCTYPE html>
+<html lang="en">
+ <head> 
+  <meta charset="utf-8" /> 
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" /> 
+  <meta name="viewport" content="width=device-width, initial-scale=1.0,maximum-scale=2.0" /> 
+  <title>
+            GoldenEye!
+  </title> 
+  <meta name="description" content="Show GoldenEye Trace" /> 
+  <meta name="author" content="J&amp;H!" /> 
+  <link href="css/bootstrap.min.css" rel="stylesheet" /> 
+  <link href="css/bootstrap-theme.min.css" rel="stylesheet" /> 
+  <link href="css/head.css" rel="stylesheet" /> 
+  <link href="css/button.css" rel="stylesheet" />
+  <link href="css/font-awesome.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="css/metro.css">
+  <link rel="stylesheet" href="css/bootstrap-table-expandable.css">
+  
+  <script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+  <script type="text/javascript" src="js/jquery.ztree.core-3.5.js"></script>
+  <script src="js/bootstrap-table-expandable.js"></script>
+  <script src="js/statusmap.js"></script>
+  <script type="text/javascript" src="js/skinnytip.js"></script>
+  <script>
+	function zTreeBeforeClick(treeId,treeNode,clickFlag){
+		return false;
+	};
+	function addHoverDom(treeId,treeNode){};
+	function removeHoverDom(treeId,treeNode){
+	};
+  	var zTree;
+	            var setting = {
+                view: {
+                    nameIsHTML: true,
+					addHoverDom:addHoverDom,
+					removeHoverDom:removeHoverDom,
+					showTitle:false
+                },
+                edit: {
+                    enable: false,
+                    showRemoveBtn: false,
+                    showRenameBtn: false
+                },
+                data: {
+					
+                    keep: {
+                        parent: true,
+                        leaf: true
+                    },
+                    simpleData: {
+                        enable: true
+                    }
+                },
+             /*   callback: {
+					beforeClick: function(treeId, treeNode) {
+						var zTree = $.fn.zTree.getZTreeObj("tree");
+						if (treeNode.isParent) {
+							zTree.expandNode(treeNode);
+							return false;
+						}
+					}
+				}*/
+				callback:{
+					beforeClick:zTreeBeforeClick
+				}
+            };
+			
+/*		var setting = {
+	
+	view: {
+			dblClickExpand: false,
+			showLine: true,
+			selectedMulti: false,
+			nameIsHTML: true
+		},
+		data: {
+			simpleData: {
+				enable:true,
+				idKey: "id",
+				pIdKey: "pId",
+				rootPId: ""
+			}
+		},
+		callback: {
+			beforeClick: function(treeId, treeNode) {
+				var zTree = $.fn.zTree.getZTreeObj("tree");
+				if (treeNode.isParent) {
+					zTree.expandNode(treeNode);
+					return false;
+				}
+			}
+		}	
+	};
+*/
+	
+	var playFlag=false;
+	var backFlag=false;
+	var timeMove;
+	var timeBackMove;
+		window.onload = function(){
+		/*	$.post("getStatus", {
+				"timestamp": "00:00:00",
+			},				
+			function(data) {
+				receiveStatus(data);
+			});
+			*/
+			var data = ${data};
+			receiveStatus(data);
+			initCssClass();
+			var selectObj = document.getElementById("mos");
+			for(var mo in window.globalWebData.mostatustable){
+				var varItem = new Option(mo, mo);      
+				selectObj.options.add(varItem);     
+			}
+		}
+		function receiveStatus(data){
+			window.globalWebData = new globalData();
+			window.globalWebData.InitTrace(data);
+			zTreeObj = $.fn.zTree.init($("#tree"), setting, window.globalWebData.curzNodes);
+		}
+		
+		
+		function drawGui(){
+			if(!window.globalWebData.UpdateIndex()){
+				//stop 结束了
+				//alert("finish!");
+				console.log("finish!");
+				document.getElementById("showTime").innerHTML = "finish";
+				stopTrace();
+				return;
+			}
+			window.globalWebData.UpdateWebData();
+			//更新时间
+			updateProcessBar();
+			document.getElementById("showTime").innerHTML = window.globalWebData.currenttime;
+			//更新Key Trace
+			document.getElementById("trace").innerHTML = window.globalWebData.keyTrace;
+			var tableData = window.globalWebData.tabData;
+			//$("#J_tab_fam  tr:not(:first)").html("");
+			//清空tbody：
+			var tboy = document.getElementById("tbody");
+			tboy.innerHTML = "";
+			//更新树 updatetree
+			zTreeObj = $.fn.zTree.init($("#tree"), setting, window.globalWebData.curzNodes);
+			/*
+			var th = tboy.insertRow(0);
+			var moth = th.insertCell(0);
+			moth.className = "customers.th";
+			moth.textContent = "MO" ;
+			var statusth = th.insertCell(1);
+			statusth.className = "customers.th";
+			statusth.textContent = "Status:" ;
+			*/
+			//console.log("after draw tree");
+			//console.log(tableData.length);
+			for(var moid in tableData){
+				var state = tableData[moid];
+				updateStatus(moid, state);
+			}
+
+		}
+		function updateStatus(mo, state){
+				var onTree = false;
+				var mos = document.getElementsByName(mo + "_status");
+				//console.log(mos.length);
+				for(var j=0; j<mos.length; j++){
+					var moOntree = mos[j];
+					//console.log(mo + "_status");
+					moOntree.textContent = state.status;
+					var color=updateStatusCss(selectCssClass(state.status));
+					moOntree.style.color=color;
+					onTree = true;
+					for(var i=0; i<state.alarms.length; i++){
+						//console.log(mo);
+						//console.log(state.alarms);
+						var alarmid = state.alarms[i];
+						var alarmtag = document.createElement("a");
+						alarmtag.textContent = alarmid;
+						alarmtag.className = "alarm";
+						alarmtag.addEventListener('mouseover', function() {SkinnyTip.tooltip(alarmid + " | " + window.globalWebData.alarmDictionary[alarmid], "", ""); setTimeout(function(){SkinnyTip.hideTip();}, 3000);});
+						alarmtag.addEventListener('mouseout', function() {SkinnyTip.hideTip();});
+						moOntree.appendChild(alarmtag);
+					}
+				}
+				if(onTree){
+					return;
+				}
+
+				var moitem = document.getElementById(mo + "_status");
+				if(moitem){
+				}
+				else{//添加到table里面
+					var newTR = document.getElementById("tbody").insertRow(document.getElementById("tbody").rows.length);
+					var newMoTD = newTR.insertCell(0);
+					newMoTD.id = mo;
+					newMoTD.innerHTML = mo;
+					moitem = newTR.insertCell(1);
+					moitem.id = mo + "_status";		
+				}
+				moitem.textContent = state.status;
+				var color=updateStatusCss(selectCssClass(state.status));
+				moitem.style.color=color;
+				for(var i=0; i<state.alarms.length; i++){
+					//console.log(mo);
+					//console.log(state.alarms);
+					var alarmid = state.alarms[i];
+					var alarmtag = document.createElement("a");
+					alarmtag.textContent = alarmid;
+					alarmtag.className = "alarm";
+					alarmtag.addEventListener('mouseover', function() {SkinnyTip.tooltip(alarmid + " | " + window.globalWebData.alarmDictionary[alarmid], "", ""); setTimeout(function(){SkinnyTip.hideTip();}, 3000);});
+					alarmtag.addEventListener('mouseout', function() {SkinnyTip.hideTip();});
+					moitem.appendChild(alarmtag);
+				}
+		}
+		
+		function moTableChange(){
+			var selectObj = document.getElementById("mos");
+			var selectIndex = selectObj.selectedIndex;//获得是第几个被选中了
+			var selectText = selectObj.options[selectIndex].text; //获
+			var values = window.globalWebData.mostatustable[selectText];
+			var selectedTable = document.getElementById("selectedMoStatusTableShow");
+			selectedTable.innerHTML = "<tr><th>TIMESTAMP</th><th>STATUS</th></tr>";
+			if(!values){				
+				return;
+			}
+			
+			for(var i=0; i<values.length; i++){
+					var newTR = selectedTable.insertRow(selectedTable.rows.length);
+					var newMoTD = newTR.insertCell(0);
+					//newMoTD.id = mo;
+					newMoTD.textContent = values[i]["timestamp"]; //时间
+					var moitem = newTR.insertCell(1);
+					var state = values[i]["status"] ;//状态
+					moitem.textContent = state.status;
+					var color=updateStatusCss(selectCssClass(state.status));
+					moitem.style.color=color;
+					/*
+					for(var i=0; i<state.alarms.length; i++){
+						//console.log(mo);
+						//console.log(state.alarms);
+						var alarmid = state.alarms[i];
+						var alarmtag = document.createElement("a");
+						alarmtag.textContent = alarmid;
+						alarmtag.className = "alarm";
+						alarmtag.addEventListener('mouseover', function() {SkinnyTip.tooltip(alarmid + " | " + window.globalWebData.alarmDictionary[alarmid], "", ""); setTimeout(function(){SkinnyTip.hideTip();}, 3000);});
+						alarmtag.addEventListener('mouseout', function() {SkinnyTip.hideTip();});
+						moitem.appendChild(alarmtag);
+					}*/
+			}
+		}
+		var statusCss={};
+		function initCssClass(){
+			statusCss["fail"]="#A00000";
+			statusCss["degrade"]="#FFA500";
+			statusCss["disable"]="#A00000";
+			statusCss["enable"]="#00AA00";
+			statusCss["normal"]="#40B3DF";
+		}
+		function selectCssClass(statusStr){
+					if(statusStr == null){
+						return "normal";
+					}
+            		if(statusStr.indexOf("FAIL")!=-1){
+						return "fail";
+            			//str= "<b style=\"color:#A00000;\">"+str+"</b>";
+            		}else if(statusStr.indexOf("DEG")!=-1){
+						return "degrade";
+            			//str= "<b style=\"color:#FFFF00;\">"+str+"</b>";
+            		}
+					else if(statusStr.indexOf("DISABLED")!=-1){
+						return "disable";
+            			//str= "<b style=\"color:#A00000;\">"+str+"</b>";
+            		}
+					else if(statusStr.indexOf("ENABLED")!=-1){
+						return "enable";
+            			//str= "<b style=\"color:#00AA00;\">"+str+"</b>";
+            		}
+					else{
+						return "normal";
+            			//str= "<b style=\"color:#40B3DF;\">"+str+"</b>";
+            		}
+        }
+		function updateStatusCss(css){
+			return statusCss[css];
+		}
+		
+		function timeStart() {
+			
+			timeMove = setInterval(function() {
+				drawGui();
+			},
+			300);
+		}	
+		function timeBack(){
+			timeBackMove=setInterval(function(){
+				drawGui();
+			},
+			300);
+		}
+		function timeStop() {
+			if(playFlag==false)
+				clearInterval(timeMove);
+		}
+		function backStop(){
+			if(backFlag==false)
+				clearInterval(timeBackMove);
+		}
+		function stopTrace(){
+			playFlag=false;
+			backFlag=false;
+			clearInterval(timeMove);
+			clearInterval(timeBackMove);
+		} 
+		function startTrace() {
+			window.globalWebData._direction = 1;
+			if(backFlag==true){
+				backFlag==false;
+				backStop();
+			}
+			playFlag^=true;
+			if(playFlag==true)
+				timeStart();
+			else
+				timeStop();
+			
+			
+		}
+		
+		function backTrace(){
+			window.globalWebData._direction = -1;
+			if(playFlag==true){
+				playFlag=false;
+				timeStop();
+			}
+			backFlag^=true;
+			if(backFlag==true){
+				timeBack();
+			}else{
+				backStop();
+			}
+		}
+		function forwardStepTrace() {
+			
+			window.globalWebData._direction = 1;
+			drawGui();
+		}
+		function backStepTrace() {
+			//timeStop();
+			window.globalWebData._direction = -1;
+			drawGui();
+		}
+		 function whichButton(event){
+            console.log(event.keyCode);
+            if(event.keyCode==32){
+            	startTrace();
+            }else if(event.keyCode==37){
+            	backStepTrace();
+            }else if(event.keyCode==39){
+            	forwardStepTrace();
+            }
+         }
+
+  </script> 
+ </head> 
+ <body onkeyup="whichButton(event)"> 
+  <div class="container"> 
+  <div class="header" style="background-image: url(css/img/back.jpg)">
+  <div id="site-navbar" style="position: absolute; top: -4px; left: -3px; border: 0; z-index: 2000;padding:0;margin:0;">
+	<a href="/" title="返回首页" style="background:none;">
+	<img src="css/img/return-back.png" style="padding:0;margin:0;border:0; -webkit-box-shadow: none;-moz-box-shadow: none;box-shadow: none;">
+	</a>
+	</div>
+  <div class="container"> 
+   <div class="row"> 
+		
+    <div class="col-xs-12"> 
+	
+	<div class="logotxt">
+     <h1> <a>GoldenEye Trace Replay</a> </h1>
+		
+    </div> 
+   </div> 
+  </div>
+ </div>
+ </div>
+ 
+ 
+   <div class="row" > 
+    <div class="col-md-4"> 
+	 <h3 title= "Time Stamp: "> Time Stamp: </h3>
+	 </div>
+	<div class="col-md-4">  
+     <h3 id="showTime", title= "Time Stamp: "> Time show here </h3> 
+	 </div>
+  
+	 <div class="col-md-4"> 
+     <table> 
+     <tbody >
+      <tr> 
+       <td>
+	   <button class="button button-normal button-3d button-action button-border button-circle" title="play" onclick="startTrace()">
+	   <i class="fa fa-play"></i>
+	   </button>
+	   </td>
+	   
+	   <td>
+	   <button class="button button-normal button-3d button-action button-plain button-border button-circle" title="stop" onclick="stopTrace()">
+	   <i class="fa fa-stop"></i>
+	   </button>
+	   </td> 
+	   
+	   <td>
+	   <button class="button button-normal button-3d button-action button-plain button-border button-circle" title="back" onclick="backTrace()">
+	   <i class="fa fa-backward"></i>
+	   </button>
+	   </td> 
+	   
+	   <td>
+	   <button class="button button-normal button-3d button-action button-plain button-border button-circle" title="step back" onclick="backStepTrace()">
+	   <i class="fa fa-chevron-left"></i>
+	   </button>
+	   </td> 
+	   
+	   <td>
+	   <button class="button button-normal button-3d button-action button-plain button-border button-circle" title="step forward" onclick="forwardStepTrace()">
+	   <i class="fa fa-chevron-right"></i>
+	   </button>
+	   </td> 
+        
+      </tr>  
+     </tbody>
+    </table> 
+	</div> 
+	</div> 
+	
+	<div class="container">
+   <div class="row"> 
+    <div class="col-md-8" >   
+       <div class="zTreeDemoBackground left" style="margin-left:8px; margin-top: 10px; width:90%;height:360px;text-align:left;border: 1px solid #617775;background: #f0f6e4;overflow-y:scroll;overflow-x:auto;">
+        <ul id="tree" class="ztree"> 
+        </ul> 
+       </div> 
+    </div> 
+
+    <div class="col-md-4"> 
+	 <div class="taskBox">		
+		<div class="taskBoxLinks"><h4 id="barh3" style="width:0%;"></h4><h5 id="barh4" style="width:100%;"></h5></div>progress<span id="barspan">0%</span>
+	</div>
+	<div style="background:#fff; margin-right: -15px; margin-left: -15px">
+     <h2> Key Trace: </h2> 
+     <p id="trace"> main: </p> 
+    </div>  
+    </div> 
+	
+   </div> 
+   </div>
+   
+   
+   <div class="row"> 
+    <div class="col-md-8 col-sm-8 col-lg-8"> 
+ 
+    <h2>Status Table</h2> 
+    <table class="table table-hover"> 
+     <tbody id="tbody" class="table table-hover">
+      <tr> 
+       <th >MO </th> 
+       <th >Status:</th> 
+      </tr>  
+     </tbody>
+    </table> 
+ 
+    </div> 
+	<div class="col-md-4 col-sm-4 col-lg-4" >
+		<h2>Selected MO Status Table</h2> 
+		<select id="mos" onchange="moTableChange()">
+		<option value="" selected = "selected"></option> 
+		</select>
+		<table class="table table-hover table-expandable" id="selectedMoStatusTableShow">
+		  <thead>
+			<tr>
+			  <th>TIMESTAMP</th>
+			  <th>STATUS</th>
+			</tr>
+		  </thead>
+		  <tbody>
+    
+      
+		  </tbody>
+		</table>
+	</div>
+   </div> 
+  </div>
+ 
+<style type="text/css">
+.taskBoxLinks { float:left; width:225px; height:7px; font-size:0; line-height:0; background:#f2f2f2; border:1px solid #dedede;-moz-border-radius:6px;-webkit-border-radius:6px;border-radius:6px; position:relative; margin-top:0px; margin-right:0px; cursor:pointer; z-index:78;}
+.taskBoxLinks h4,.taskBoxLinks h5{ position:absolute; left:-1px; top:-11px; height:7px; font-size:0; line-height:0; width:100%; background:#a3d9f4; border:1px solid #187aab; -moz-border-radius:6px;-webkit-border-radius:6px;border-radius:6px; z-index:99;}
+.taskBoxLinks h5 { border:1px solid #91cdea; background:#f5fafc; z-index:88;}
+.taskBox { width:360px; margin:40px auto; color:#666;}
+</style>
+<script type="text/javascript">
+	function updateProcessBar(){
+		var $span = Math.round((window.globalWebData.index / window.globalWebData.total) * 100);
+		console.log($span);
+		$('#barh3').stop().animate({width:$span+'%'});		
+		$('#barspan').text($span+'%');
+		if($span==100){
+			$(this).next('span').text('finish')	
+		}else{
+			$(this).next('span').text($span+'%');
+		}
+	}
+	//window.globalWebData.index window.globalWebData.total
+/*	$(document).ready( function() {
+	$('.taskBox').delegate('.taskBoxLinks','mousemove',function(e){		
+		var $mouse = e.pageX - $(this).offset().left;
+		var $span = Math.round($mouse/22.5)*10;		
+		$(this).find('h5').stop().animate({width:$span+'%'},50);		
+		$(this).next('span').text($span+'%');
+	}).delegate('.taskBoxLinks','mousedown',function(){
+		$(this).find('h5').stop().animate({width:'10%'},50);
+		var $mousex = $(this).find('h3').width();
+		var $spanx = Math.round($mousex/22.5)*10;
+		if($spanx==100){
+			$(this).next('span').text('finish')	
+		}else{
+			$(this).next('span').text($spanx+'%');
+		}	
+	}).delegate('.taskBoxLinks','click',function(e){
+		var $mouse = e.pageX - $(this).offset().left;
+		var $span = Math.round($mouse/22.5)*10;
+		$(this).find('h4').stop().animate({width:$span+'%'},100);
+		if($span==100){
+			$(this).next('span').text('finish')	
+		}			
+	});		
+});*/
+</script>
+  <script src="js/scripts.js">
+        </script>  
+  <script type="text/javascript">SkinnyTip.captureMouse();</script>
+ </body>
+</html>
